@@ -1,11 +1,19 @@
 "use client";
-import { useState, useEffect } from "react";
+import { Suspense, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import YildizAlani from "../../components/YildizAlani";
 import { veriOku, veriGuncelle } from "../../lib/localStore";
 import { PLANLAR } from "../../lib/subscription";
 
 export default function AbonelikSayfasi() {
+  return (
+    <Suspense fallback={null}>
+      <AbonelikIcerik />
+    </Suspense>
+  );
+}
+
+function AbonelikIcerik() {
   const [veri, setVeri] = useState(null);
   const [islemde, setIslemde] = useState(false);
   const [hataMesaji, setHataMesaji] = useState("");
@@ -54,7 +62,7 @@ export default function AbonelikSayfasi() {
   }
 
   function galaksiKartiIndir() {
-    const kartMetni = `${veri.galaksiAdi || "Adsız Galaksi"} — ${veri.istatistik.toplamCevap} cevap — ${new Date().toLocaleDateString("tr-TR")}`;
+    const kartMetni = `${veri.galaksiAdi || "Adsız Galaksi"} — ${veri.istatistik.toplamCevap} cevap — ${new Date().toLocaleDateString()}`;
     const blob = new Blob([kartMetni], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
