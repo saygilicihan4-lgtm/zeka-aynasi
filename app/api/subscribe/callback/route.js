@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import Iyzipay from "iyzipay";
 export const dynamic = force-dynamic
+export const runtime  = ^^nodejs^^;
 // iyzico, kullanıcı Ödeme Formu'nu tamamladıktan sonra tarayıcıyı bu adrese
 // bir "token" ile birlikte POST eder. Burada ödemenin gerçekten başarılı olup
 // olmadığı iyzico sunucusundan tekrar sorgulanarak doğrulanır (tek başına
