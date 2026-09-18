@@ -2,8 +2,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import YildizAlani from "../../components/YildizAlani";
-import { veriOku, veriGuncelle } from "../../lib/localStore";
+import { veriOku } from "../../lib/localStore";
 import { yankiSecimiYap } from "../../lib/galaxySystem";
+import { PLANLAR } from "../../lib/subscription";
 
 export default function AnaSayfa() {
   const [veri, setVeri] = useState(null);
@@ -54,6 +55,23 @@ export default function AnaSayfa() {
         <br />
         <button className="buton buton-ikincil" onClick={() => router.push("/sesli-sohbet")}>
           Bilgeyle Sesli Konuş
+        </button>
+      </div>
+
+      <div className="kart" style={{ marginTop: 20, border: "1px solid #7c3aed" }}>
+        <div style={{ fontSize: "0.75rem", color: "#c4b5fd", marginBottom: 6 }}>
+          Abonelik Paketleri
+        </div>
+        <h3 style={{ marginBottom: 8 }}>Ücretsiz veya Premium</h3>
+        <p style={{ fontSize: "0.88rem", lineHeight: 1.6, color: "#c4b5fd" }}>
+          <strong>{PLANLAR.ucretsiz.isim}:</strong> {PLANLAR.ucretsiz.fiyatMetni}<br />
+          <strong>{PLANLAR.premium.isim}:</strong> {PLANLAR.premium.fiyatMetni}
+        </p>
+        <p style={{ fontSize: "0.8rem", color: "#8b7fae", marginBottom: 14 }}>
+          Premium; sınırsız soru ve sohbet, Zaman Tüneli ve Bilgeyle sesli konuşma özelliklerini içerir.
+        </p>
+        <button className="buton" onClick={() => router.push("/abonelik")}>
+          Paketleri İncele
         </button>
       </div>
 
