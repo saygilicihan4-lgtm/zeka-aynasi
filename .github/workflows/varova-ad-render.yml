@@ -1,6 +1,9 @@
 name: VAROVA Ad Render
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - varova-ad-render-20260921
