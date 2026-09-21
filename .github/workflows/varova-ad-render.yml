@@ -1,0 +1,109 @@
+name: VAROVA Ad Render
+
+on:
+  push:
+    branches:
+      - varova-ad-render-20260921
+    paths:
+      - 'varova_render/**'
+      - '.github/workflows/varova-ad-render.yml'
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install render dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install pillow requests numpy
+
+      - name: Build exact-product scenes and original music
+        run: python varova_render/render.py
+
+      - name: Download Turkish VAROVA closing voice
+        run: |
+          python - <<'PY'
+          import requests
+          url = "https://resource2.heygen.ai/text_to_speech/3dc2259afe124a03ad26f67a00ad03fe/61646c861eb64e2d9036d8db51385356/id=4c2e15c8-19dd-4bb4-85e7-51e827dbed78.wav"
+          r = requests.get(url, timeout=30)
+          r.raise_for_status()
+          open("render_out/voice.wav","wb").write(r.content)
+          print("voice bytes", len(r.content))
+          PY
+
+      - name: Render 15-second vertical master
+        shell: bash
+        run: |
+          set -euxo pipefail
+          render_still () {
+            IN="$1"; DUR="$2"; OUT="$3"; RATE="$4"
+            ffmpeg -y -loop 1 -framerate 30 -i "$IN" -t "$DUR" \
+              -vf "scale=1200:2134:force_original_aspect_ratio=increase,crop=1200:2134,zoompan=z='min(1+$RATE*on,1.065)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s=1080x1920:fps=30,format=yuv420p" \
+              -an -c:v libx264 -preset medium -crf 17 -r 30 -movflags +faststart "$OUT"
+          }
+
+          render_still render_out/scene1.png 1.0 render_out/s1.mp4 0.0020
+          render_still render_out/scene2.png 2.3 render_out/s2.mp4 0.0009
+          render_still render_out/scene3.png 2.3 render_out/s3.mp4 0.0009
+          render_still render_out/scene4.png 2.3 render_out/s4.mp4 0.0009
+          render_still render_out/scene5.png 2.3 render_out/s5.mp4 0.0009
+          render_still render_out/scene6.png 2.8 render_out/s6.mp4 0.00065
+          render_still render_out/scene7.png 2.0 render_out/s7.mp4 0.00055
+
+          cat > render_out/list.txt <<'EOF'
+          file 's1.mp4'
+          file 's2.mp4'
+          file 's3.mp4'
+          file 's4.mp4'
+          file 's5.mp4'
+          file 's6.mp4'
+          file 's7.mp4'
+          EOF
+
+          ffmpeg -y -f concat -safe 0 -i render_out/list.txt -c copy render_out/visual.mp4
+
+          ffmpeg -y \
+            -i render_out/visual.mp4 \
+            -i render_out/bed.wav \
+            -i render_out/voice.wav \
+            -filter_complex "[1:a]volume=0.88[bed];[2:a]adelay=13100|13100,volume=1.55[vo];[bed][vo]amix=inputs=2:duration=first:dropout_transition=0,alimiter=limit=0.94[a]" \
+            -map 0:v:0 -map "[a]" -t 15 \
+            -c:v libx264 -preset medium -crf 17 -pix_fmt yuv420p -r 30 \
+            -c:a aac -b:a 192k -ar 48000 \
+            -movflags +faststart render_out/VAROVA_15S_PREMIUM_MASTER.mp4
+
+          ffmpeg -y -ss 1.25 -i render_out/VAROVA_15S_PREMIUM_MASTER.mp4 -frames:v 1 -q:v 2 render_out/VAROVA_PREMIUM_COVER.jpg
+
+      - name: Quality checks
+        run: |
+          python - <<'PY'
+          import json, subprocess, os
+          f="render_out/VAROVA_15S_PREMIUM_MASTER.mp4"
+          cmd=["ffprobe","-v","error","-show_entries","format=duration:stream=codec_name,width,height,r_frame_rate","-of","json",f]
+          data=json.loads(subprocess.check_output(cmd))
+          duration=float(data["format"]["duration"])
+          streams=data["streams"]
+          video=next(s for s in streams if "width" in s)
+          assert 14.95 <= duration <= 15.05, duration
+          assert video["width"]==1080 and video["height"]==1920, video
+          assert os.path.getsize(f) > 500000, os.path.getsize(f)
+          with open("render_out/QA.json","w") as h:
+              json.dump({"duration":duration,"video":video,"bytes":os.path.getsize(f),"status":"PASS"},h,indent=2)
+          print("QA PASS", duration, video["width"], video["height"], os.path.getsize(f))
+          PY
+
+      - name: Upload finished VAROVA ad
+        uses: actions/upload-artifact@v4
+        with:
+          name: varova-premium-ad
+          path: |
+            render_out/VAROVA_15S_PREMIUM_MASTER.mp4
+            render_out/VAROVA_PREMIUM_COVER.jpg
+            render_out/QA.json
+          retention-days: 7
